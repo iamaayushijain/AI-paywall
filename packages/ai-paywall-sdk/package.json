@@ -1,7 +1,7 @@
 {
-  "name": "ai-paywall-sdk-sui",
-  "version": "1.0.0",
-  "description": "Drop-in HTTP 402 AI paywall on SUI. Gate content with two lines of Express middleware — SUI micropayments arrive directly in your on-chain account, no API key, no custodian.",
+  "name": "tollgate-sdk",
+  "version": "0.2.1",
+  "description": "Drop-in AI bot paywall, fully wallet-based: provide your Solana wallet, receive USDC directly. No API keys. Local bot detection + stateless x402 facilitator. Works with Express, Next.js, Fastify, and Cloudflare Workers.",
   "type": "module",
   "license": "MIT",
   "engines": {
@@ -10,7 +10,10 @@
   "main": "./src/index.js",
   "exports": {
     ".": "./src/index.js",
-    "./express": "./src/adapters/express.js"
+    "./express": "./src/adapters/express.js",
+    "./nextjs": "./src/adapters/nextjs.js",
+    "./fastify": "./src/adapters/fastify.js",
+    "./cloudflare": "./src/adapters/cloudflare.js"
   },
   "files": [
     "src",
@@ -19,15 +22,16 @@
   "keywords": [
     "ai",
     "paywall",
-    "sui",
-    "http-402",
+    "x402",
+    "solana",
     "bot-detection",
     "express",
-    "micropayments",
-    "move",
-    "web3"
+    "nextjs",
+    "fastify",
+    "cloudflare-workers",
+    "monetization"
   ],
-  "peerDependencies": {
-    "@mysten/sui": ">=2.0.0"
+  "scripts": {
+    "lint": "node --check src/index.js"
   }
 }

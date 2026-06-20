@@ -1,7 +1,7 @@
 {
-  "name": "ai-paywall-agent-sdk-sui",
-  "version": "1.0.0",
-  "description": "Drop-in SUI paywall client for AI agents. Intercepts HTTP 402 challenges, builds and submits pay_and_unlock PTBs automatically, retries with payment headers — budget-capped and replay-safe.",
+  "name": "tollgate-agent-sdk",
+  "version": "0.1.1",
+  "description": "Drop-in client SDK for AI agents that need to pay HTTP 402 paywalls. Handles x402 challenges, USDC settlement on Solana, retries, and safety guards automatically.",
   "type": "module",
   "license": "MIT",
   "engines": {
@@ -11,7 +11,8 @@
   "exports": {
     ".": "./src/index.js",
     "./signer": "./src/core/signer.js",
-    "./errors": "./src/core/errors.js"
+    "./errors": "./src/core/errors.js",
+    "./langchain": "./src/tools/langchain.js"
   },
   "files": [
     "src",
@@ -20,15 +21,21 @@
   "keywords": [
     "ai-agent",
     "paywall",
-    "sui",
+    "x402",
+    "solana",
+    "usdc",
     "http-402",
-    "ptb",
-    "move",
     "fetch",
-    "micropayments",
-    "web3"
+    "langchain",
+    "openai-tools",
+    "monetization"
   ],
+  "scripts": {
+    "lint": "node --check src/index.js && node --check src/core/client.js && node --check src/core/payment.js && node --check src/core/signer.js && node --check src/core/guards.js && node --check src/core/spendTracker.js && node --check src/core/errors.js && node --check src/tools/langchain.js"
+  },
   "peerDependencies": {
-    "@mysten/sui": ">=2.0.0"
+    "@solana/spl-token": "^0.4.0",
+    "@solana/web3.js": "^1.95.0",
+    "@x402-solana/core": "^0.3.0"
   }
 }

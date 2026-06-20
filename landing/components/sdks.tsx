@@ -5,42 +5,41 @@ import { motion, useInView } from "framer-motion";
 import Link from "next/link";
 import { Server, Bot, ArrowRight, Check } from "lucide-react";
 
-const PUBLISHER_CODE = `import { createPaywall } from "ai-paywall-sdk-sui";
-import { expressMiddleware } from "ai-paywall-sdk-sui/express";
+const PUBLISHER_CODE = `import { createPaywall } from "tollgate-sdk";
+import { expressMiddleware } from "tollgate-sdk/express";
 
 const paywall = createPaywall({
-  packageId: process.env.SUI_PACKAGE_ID,
-  serverKey: process.env.SUI_SERVER_SECRET_KEY,
-  network: "testnet",
+  walletAddress: process.env.SOLANA_WALLET_ADDRESS,
+  network: "mainnet-beta",
   protect: ["/articles/*", "/blog/*"],
-  priceMist: 1_000_000, // 0.001 SUI per crawl
+  basePriceMicroUsdc: 1_000, // $0.001 per crawl
 });
 
 app.use(expressMiddleware(paywall));
 
-// req.suiPayment is available on paid routes
+// req.paywallPayment is available on paid routes
 app.get("/articles/:slug", (req, res) => {
-  res.json({ paid: true, payer: req.suiPayment?.payer });
+  res.json({ paid: true, sig: req.paywallPayment?.signature });
 });`;
 
 const AGENT_CODE = `import {
-  createSuiAgentClient,
+  createAgentPaywallClient,
   fromKeypairFile,
-} from "ai-paywall-agent-sdk-sui";
+} from "tollgate-agent-sdk";
 
-const client = createSuiAgentClient({
-  network: "testnet",
-  signer: fromKeypairFile(),         // ~/.sui/sui_config/sui.keystore
-  maxPerRequestMist: 10_000_000,     // hard cap: 0.01 SUI per request
-  maxTotalMist: 1_000_000_000,       // session budget: 1 SUI
+const client = createAgentPaywallClient({
+  network: "mainnet-beta",
+  signer: fromKeypairFile(),       // ~/.config/solana/id.json
+  maxAmountMicroUsdc: 10_000,      // hard cap: $0.01 per request
+  maxTotalMicroUsdc: 1_000_000,    // session budget: $1.00
 });
 
 // Drop-in fetch — auto-pays 402s, retries transparently
 const res = await client.fetch("https://site.com/articles/ai");
 const data = await res.json();
 
-console.log("agent address:", client.address());
-console.log("spent so far:", client.spend(), "MIST");`;
+console.log("paid:", res.paywallPayment?.signature);
+console.log("spend:", client.spend());`;
 
 function CodeBlock({ code }: { code: string }) {
   return (
@@ -89,24 +88,24 @@ export function SDKs() {
                   <Server className="w-5 h-5 text-accent" />
                 </div>
                 <div>
-                  <div className="text-xs text-inkSubtle font-mono">ai-paywall-sdk-sui</div>
+                  <div className="text-xs text-inkSubtle font-mono">tollgate-sdk</div>
                   <div className="text-base font-semibold text-ink">Publisher SDK</div>
                 </div>
               </div>
               <p className="mt-3 text-sm text-inkMuted">
-                Drop-in middleware for Express and Node.js servers.
-                Provide your SUI package ID and server key — payments are verified on-chain.
+                Drop-in middleware for Express, Next.js, Fastify, and Cloudflare Workers.
+                Provide your Solana wallet — payments land there directly.
               </p>
             </div>
 
             <div className="p-6 space-y-3 flex-1">
               {[
                 "Local bot detection — no network call for human visitors",
-                "HTTP 402 with a SUI shared-object challenge (PaywallChallenge)",
-                "On-chain verification — consuming the object IS the replay protection",
-                "Optional PublisherVault for automatic payment splitting (publisher / pool / protocol)",
-                "No API key, no signup, no custodian — Move contract only",
-                "SUI testnet and mainnet ready",
+                "HTTP 402 x402 envelopes with signed per-request challenges",
+                "On-chain USDC verification, replay-protected via Supabase",
+                "Adapters: Express, Next.js App Router, Fastify, Cloudflare Workers",
+                "Optional analytics dashboard via Sign-In With Solana",
+                "No API key, no signup, no custodian — wallet-only",
               ].map((f) => (
                 <div key={f} className="flex gap-2.5 text-sm">
                   <Check className="w-4 h-4 text-success shrink-0 mt-0.5" />
@@ -140,24 +139,24 @@ export function SDKs() {
                   <Bot className="w-5 h-5 text-success" />
                 </div>
                 <div>
-                  <div className="text-xs text-inkSubtle font-mono">ai-paywall-agent-sdk-sui</div>
+                  <div className="text-xs text-inkSubtle font-mono">tollgate-agent-sdk</div>
                   <div className="text-base font-semibold text-ink">Agent SDK</div>
                 </div>
               </div>
               <p className="mt-3 text-sm text-inkMuted">
-                Gives any AI agent the ability to pay SUI HTTP 402 paywalls automatically,
-                safely, and within configurable MIST budget limits.
+                Gives any AI agent the ability to pay HTTP 402 paywalls automatically,
+                safely, and within configurable budget limits.
               </p>
             </div>
 
             <div className="p-6 space-y-3 flex-1">
               {[
                 "Drop-in client.fetch() — 402s handled automatically and transparently",
-                "Hard caps: maxPerRequestMist and maxTotalMist per session",
-                "Signer helpers: fromKeypairFile, fromSecretKeyBech32, fromSecretKeyBase64",
-                "Supports both simple (pay_and_unlock) and split-vault (pay_and_unlock_split) modes",
-                "Budget tracking via client.spend() returns total MIST spent",
-                "Typed errors: BudgetExceededError, PaymentRefusedError, UnsupportedChallengeError",
+                "Hard caps: maxAmountMicroUsdc and maxTotalMicroUsdc per session",
+                "Signer helpers: keypair file, raw array, base58 secret, custom HSM/KMS",
+                "LangChain tool via paywallFetchTool(client) — OpenAI-compatible",
+                "Coalesces concurrent requests — never pays twice for the same nonce",
+                "Typed errors: PaymentRefusedError, BudgetExceededError, OnChainError",
               ].map((f) => (
                 <div key={f} className="flex gap-2.5 text-sm">
                   <Check className="w-4 h-4 text-success shrink-0 mt-0.5" />

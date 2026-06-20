@@ -56,8 +56,8 @@ export default function DownloadPage() {
           Install Tollgate SDKs
         </h1>
         <p className="mt-3 text-inkMuted max-w-xl">
-          Both SDKs are MIT-licensed and published to npm. SUI peer dependency required.
-          Install only what your side of the market needs.
+          Both SDKs are MIT-licensed and published to npm. Install only what your
+          side of the market needs.
         </p>
 
         {/* Publisher SDK */}
@@ -67,39 +67,49 @@ export default function DownloadPage() {
               <Server className="w-4 h-4 text-accent" />
             </div>
             <div>
-              <div className="text-xs text-inkSubtle font-mono">ai-paywall-sdk-sui</div>
+              <div className="text-xs text-inkSubtle font-mono">tollgate-sdk</div>
               <h2 className="text-xl font-semibold text-ink">Publisher SDK</h2>
             </div>
           </div>
 
           <p className="text-sm text-inkMuted mb-5">
-            Drop-in middleware for Express. Provide your SUI package ID and server key —
-            payments are verified on-chain via Move. No database, no custodian.
+            Drop-in middleware for Express, Next.js, Fastify, and Cloudflare Workers.
+            Requires only your Solana wallet address — no API key, no signup.
           </p>
 
           <div className="space-y-3">
             <div>
               <div className="text-xs text-inkSubtle mb-2 font-medium">Install</div>
-              <InstallBlock cmd="npm install ai-paywall-sdk-sui @mysten/sui" />
+              <InstallBlock cmd="npm install tollgate-sdk" />
             </div>
 
             <div>
               <div className="text-xs text-inkSubtle mb-2 font-medium">Express</div>
-              <InstallBlock cmd='import { createPaywall } from "ai-paywall-sdk-sui"; import { expressMiddleware } from "ai-paywall-sdk-sui/express";' />
+              <InstallBlock cmd='import { createPaywall } from "tollgate-sdk"; import { expressMiddleware } from "tollgate-sdk/express";' />
+            </div>
+            <div>
+              <div className="text-xs text-inkSubtle mb-2 font-medium">Next.js</div>
+              <InstallBlock cmd='import { paywallMiddleware } from "tollgate-sdk/nextjs";' />
+            </div>
+            <div>
+              <div className="text-xs text-inkSubtle mb-2 font-medium">Fastify</div>
+              <InstallBlock cmd='import { fastifyPlugin } from "tollgate-sdk/fastify";' />
+            </div>
+            <div>
+              <div className="text-xs text-inkSubtle mb-2 font-medium">Cloudflare Workers</div>
+              <InstallBlock cmd='import { cloudflareHandler } from "tollgate-sdk/cloudflare";' />
             </div>
           </div>
 
           <div className="mt-6 p-4 rounded-xl border border-border bg-surface">
             <div className="text-xs text-inkSubtle mb-2 font-medium">Minimum config</div>
             <pre className="code-block text-inkMuted text-xs">{`const paywall = createPaywall({
-  packageId: process.env.SUI_PACKAGE_ID,
-  serverKey: process.env.SUI_SERVER_SECRET_KEY,
-  network: "testnet",
-  priceMist: 1_000_000, // 0.001 SUI per crawl
+  walletAddress: process.env.SOLANA_WALLET_ADDRESS,
+  network: "mainnet-beta",
+  basePriceMicroUsdc: 1_000, // $0.001 per crawl
 });
 
-app.use(expressMiddleware(paywall));
-// req.suiPayment set on paid requests`}</pre>
+app.use(expressMiddleware(paywall));`}</pre>
           </div>
         </section>
 
@@ -113,44 +123,40 @@ app.use(expressMiddleware(paywall));
               <Bot className="w-4 h-4 text-success" />
             </div>
             <div>
-              <div className="text-xs text-inkSubtle font-mono">ai-paywall-agent-sdk-sui</div>
+              <div className="text-xs text-inkSubtle font-mono">tollgate-agent-sdk</div>
               <h2 className="text-xl font-semibold text-ink">Agent SDK</h2>
             </div>
           </div>
 
           <p className="text-sm text-inkMuted mb-5">
-            Drop-in SUI paywall client for AI agents. Automatically detects, pays, and retries
-            HTTP 402 challenges via pay_and_unlock PTBs.
+            Drop-in 402-paywall client for AI agents. Handles detection, payment,
+            and retry automatically. Peer dependencies required.
           </p>
 
           <div className="space-y-3">
             <div>
-              <div className="text-xs text-inkSubtle mb-2 font-medium">Install</div>
-              <InstallBlock cmd="npm install ai-paywall-agent-sdk-sui @mysten/sui" />
+              <div className="text-xs text-inkSubtle mb-2 font-medium">Install (with peer deps)</div>
+              <InstallBlock cmd="npm install tollgate-agent-sdk @solana/web3.js @solana/spl-token @x402-solana/core" />
             </div>
             <div>
-              <div className="text-xs text-inkSubtle mb-2 font-medium">Signers</div>
-              <InstallBlock cmd='import { fromKeypairFile, fromSecretKeyBech32 } from "ai-paywall-agent-sdk-sui";' />
-            </div>
-            <div>
-              <div className="text-xs text-inkSubtle mb-2 font-medium">Error types</div>
-              <InstallBlock cmd='import { BudgetExceededError, PaymentRefusedError } from "ai-paywall-agent-sdk-sui";' />
+              <div className="text-xs text-inkSubtle mb-2 font-medium">LangChain tool</div>
+              <InstallBlock cmd='import { paywallFetchTool } from "tollgate-agent-sdk/langchain";' />
             </div>
           </div>
 
           <div className="mt-6 p-4 rounded-xl border border-border bg-surface">
             <div className="text-xs text-inkSubtle mb-2 font-medium">Minimum config</div>
-            <pre className="code-block text-inkMuted text-xs">{`import { createSuiAgentClient, fromKeypairFile } from "ai-paywall-agent-sdk-sui";
+            <pre className="code-block text-inkMuted text-xs">{`import { createAgentPaywallClient, fromKeypairFile } from "tollgate-agent-sdk";
 
-const client = createSuiAgentClient({
-  network: "testnet",
-  signer: fromKeypairFile(),       // ~/.sui/sui_config/sui.keystore
-  maxPerRequestMist: 10_000_000,   // hard cap: 0.01 SUI/request
-  maxTotalMist: 1_000_000_000,     // session budget: 1 SUI
+const client = createAgentPaywallClient({
+  network: "mainnet-beta",
+  signer: fromKeypairFile(),      // ~/.config/solana/id.json
+  maxAmountMicroUsdc: 10_000,     // never pay > $0.01/request
+  maxTotalMicroUsdc: 1_000_000,   // session budget: $1.00
 });
 
 const res = await client.fetch("https://site.com/article");
-console.log("spent:", client.spend(), "MIST");`}</pre>
+console.log("paid:", res.paywallPayment?.signature);`}</pre>
           </div>
         </section>
       </div>

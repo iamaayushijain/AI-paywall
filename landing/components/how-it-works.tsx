@@ -9,22 +9,22 @@ const STEPS = [
     step: "01",
     icon: Bot,
     title: "Agent hits your content",
-    body: "An AI crawler requests your page. Tollgate's SDK detects it via user-agent patterns and header fingerprinting — before serving a single byte of content.",
+    body: "An AI crawler requests your page. Tollgate's SDK detects it via user-agent, header fingerprinting, and datacenter IP scoring — before serving a single byte.",
     detail: "Detects: GPTBot, ClaudeBot, PerplexityBot, Scrapy, python-requests, and 20+ others",
   },
   {
     step: "02",
     icon: CreditCard,
     title: "HTTP 402: pay to continue",
-    body: "The server creates a PaywallChallenge shared object on SUI and returns HTTP 402 with its ID, price in MIST, and the Move call target. The challenge is on-chain — no database.",
-    detail: "Agent SDK reads the 402, builds a pay_and_unlock PTB, signs it, and submits to SUI.",
+    body: "The server returns HTTP 402 with an x402 challenge envelope — price in micro-USDC, your wallet's ATA as recipient, and a signed nonce bound to the request.",
+    detail: "The agent's SDK reads the envelope, builds a USDC SPL transfer, signs it, and submits to Solana.",
   },
   {
     step: "03",
     icon: CheckCircle,
     title: "On-chain verification, content unlocked",
-    body: "The server reads the PaymentVerified event from the SUI transaction. The challenge object is consumed atomically — that's the replay protection. Content released.",
-    detail: "SUI lands in your account directly. No intermediary, no custodian, no API key.",
+    body: "The server verifies the transaction against Solana RPC — confirms amount, recipient ATA, and challenge binding. No double-spend. Content released.",
+    detail: "Payment lands directly in your wallet. No intermediary, no custodian, no API key.",
   },
 ];
 
@@ -127,7 +127,7 @@ function FlowDiagram() {
       {/* Agent */}
       <rect x="10" y="30" width="120" height="60" rx="8" fill="#1a1a1a" stroke="#2a2a2a" strokeWidth="1" />
       <text x="70" y="55" textAnchor="middle" fill="#a3a3a3" fontSize="11" fontFamily="monospace">AI Agent</text>
-      <text x="70" y="72" textAnchor="middle" fill="#525252" fontSize="10" fontFamily="monospace">ai-paywall-agent-sdk-sui</text>
+      <text x="70" y="72" textAnchor="middle" fill="#525252" fontSize="10" fontFamily="monospace">tollgate-agent-sdk</text>
 
       {/* Arrow: Agent → Publisher */}
       <line x1="132" y1="60" x2="228" y2="60" stroke="#525252" strokeWidth="1" markerEnd="url(#arrow)" />
@@ -136,38 +136,38 @@ function FlowDiagram() {
       {/* Publisher */}
       <rect x="230" y="30" width="120" height="60" rx="8" fill="#1a1a1a" stroke="#2a2a2a" strokeWidth="1" />
       <text x="290" y="55" textAnchor="middle" fill="#a3a3a3" fontSize="11" fontFamily="monospace">Publisher</text>
-      <text x="290" y="72" textAnchor="middle" fill="#525252" fontSize="10" fontFamily="monospace">ai-paywall-sdk-sui</text>
+      <text x="290" y="72" textAnchor="middle" fill="#525252" fontSize="10" fontFamily="monospace">tollgate-sdk</text>
 
       {/* Arrow: Publisher → Agent (402) */}
       <line x1="230" y1="75" x2="134" y2="88" stroke="#fbbf24" strokeWidth="1" markerEnd="url(#arrow-accent)" />
-      <text x="182" y="100" textAnchor="middle" fill="#f59e0b" fontSize="9" fontFamily="monospace">402 + SUI challenge</text>
+      <text x="182" y="100" textAnchor="middle" fill="#f59e0b" fontSize="9" fontFamily="monospace">402 + x402 envelope</text>
 
-      {/* Arrow: Agent → SUI */}
+      {/* Arrow: Agent → Solana */}
       <line x1="132" y1="52" x2="448" y2="30" stroke="#f59e0b" strokeWidth="1" strokeDasharray="4,3" markerEnd="url(#arrow-accent)" />
-      <text x="320" y="30" textAnchor="middle" fill="#f59e0b" fontSize="9" fontFamily="monospace">pay_and_unlock PTB</text>
+      <text x="320" y="30" textAnchor="middle" fill="#f59e0b" fontSize="9" fontFamily="monospace">USDC transfer (signed)</text>
 
-      {/* SUI */}
+      {/* Solana */}
       <rect x="450" y="8" width="120" height="52" rx="8" fill="#1a1a1a" stroke="#404040" strokeWidth="1" />
-      <text x="510" y="30" textAnchor="middle" fill="#a3a3a3" fontSize="11" fontFamily="monospace">SUI</text>
-      <text x="510" y="47" textAnchor="middle" fill="#525252" fontSize="10" fontFamily="monospace">Move contract</text>
+      <text x="510" y="30" textAnchor="middle" fill="#a3a3a3" fontSize="11" fontFamily="monospace">Solana</text>
+      <text x="510" y="47" textAnchor="middle" fill="#525252" fontSize="10" fontFamily="monospace">USDC on-chain</text>
 
-      {/* Arrow: Agent → Publisher (retry with payment headers) */}
+      {/* Arrow: Agent → Publisher (retry with X-PAYMENT) */}
       <line x1="132" y1="60" x2="228" y2="60" stroke="#525252" strokeWidth="1" />
       <line x1="132" y1="45" x2="228" y2="45" stroke="#22c55e" strokeWidth="1" markerEnd="url(#arrow-green)" />
-      <text x="180" y="36" textAnchor="middle" fill="#22c55e" fontSize="9" fontFamily="monospace">X-SUI-PAYMENT-TX</text>
+      <text x="180" y="36" textAnchor="middle" fill="#22c55e" fontSize="9" fontFamily="monospace">X-PAYMENT header</text>
 
-      {/* Arrow: Publisher → SUI (verify) */}
+      {/* Arrow: Publisher → Solana (verify) */}
       <line x1="352" y1="50" x2="448" y2="40" stroke="#525252" strokeWidth="1" strokeDasharray="4,3" markerEnd="url(#arrow)" />
-      <text x="405" y="56" textAnchor="middle" fill="#525252" fontSize="9" fontFamily="monospace">read event</text>
+      <text x="405" y="56" textAnchor="middle" fill="#525252" fontSize="9" fontFamily="monospace">verify tx</text>
 
       {/* Arrow: Publisher → Agent (200) */}
       <line x1="230" y1="63" x2="134" y2="63" stroke="#22c55e" strokeWidth="1" markerEnd="url(#arrow-green)" />
       <text x="182" y="78" textAnchor="middle" fill="#22c55e" fontSize="9" fontFamily="monospace">200 + content</text>
 
-      {/* Publisher account */}
+      {/* Arrow: Solana → Publisher wallet */}
       <rect x="620" y="30" width="160" height="60" rx="8" fill="#1a1a1a" stroke="#404040" strokeWidth="1" />
-      <text x="700" y="55" textAnchor="middle" fill="#22c55e" fontSize="11" fontFamily="monospace">Publisher Account</text>
-      <text x="700" y="72" textAnchor="middle" fill="#525252" fontSize="10" fontFamily="monospace">+0.001 SUI</text>
+      <text x="700" y="55" textAnchor="middle" fill="#22c55e" fontSize="11" fontFamily="monospace">Publisher Wallet</text>
+      <text x="700" y="72" textAnchor="middle" fill="#525252" fontSize="10" fontFamily="monospace">+$0.001 USDC</text>
       <line x1="572" y1="45" x2="618" y2="50" stroke="#22c55e" strokeWidth="1" markerEnd="url(#arrow-green)" />
     </svg>
   );

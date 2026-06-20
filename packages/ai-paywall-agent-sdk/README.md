@@ -1,61 +1,176 @@
-# ai-paywall-agent-sdk-sui
+# tollgate-agent-sdk
 
-Drop-in `fetch()` replacement for AI agents. Automatically detects, pays, and retries
-SUI HTTP 402 paywalls via `pay_and_unlock` Programmable Transaction Blocks.
+**Drop-in 402-paywall client for AI agents.** Gives any agent — scrapers,
+LangChain tools, OpenAI function-callers, custom autonomous workers — the
+ability to pay HTTP 402 paywalls automatically and safely.
+
+> If you publish content, use `tollgate-sdk` to **gate** it.
+> If you build agents, use `tollgate-agent-sdk` to **pay** for it.
+
+## What it does
+
+Replaces the entire ~165-line manual flow in `e2e-sdk-flow.js` with one call:
+
+```js
+const res = await client.fetch("https://example.com/articles/test");
+```
+
+When the server returns `200`, this is a passthrough. When the server
+returns `402`, the SDK:
+
+1. parses the x402 envelope and challenge token
+2. **validates** it against your safety policy (network, mint, payTo,
+   max amount per request, lifetime budget cap)
+3. builds, signs, and submits a USDC SPL transfer on Solana
+4. mints the matching `X-PAYMENT` header
+5. retries the original request with `X-PAYMENT` and `x-paywall-challenge`
+6. returns the unlocked `Response` with payment metadata attached
 
 ## Install
 
 ```bash
-npm install ai-paywall-agent-sdk-sui @mysten/sui
+npm install tollgate-agent-sdk @solana/web3.js @solana/spl-token @x402-solana/core
 ```
 
-## Quick Start
+> The Solana + x402 packages are peer dependencies so your agent project
+> stays in control of versions.
+
+## Quick start
 
 ```js
-import { createSuiAgentClient, fromKeypairFile } from "ai-paywall-agent-sdk-sui";
+import {
+  createAgentPaywallClient,
+  fromKeypairFile,
+} from "tollgate-agent-sdk";
 
-const client = createSuiAgentClient({
-  network: "testnet",
-  signer: fromKeypairFile(),       // ~/.sui/sui_config/sui.keystore
-  maxPerRequestMist: 10_000_000,   // hard cap: 0.01 SUI/request
-  maxTotalMist: 1_000_000_000,     // session budget: 1 SUI
+const client = createAgentPaywallClient({
+  network: "devnet",
+  signer: fromKeypairFile(),       // ~/.config/solana/id.json
+  maxAmountMicroUsdc: 10_000,      // never pay > $0.01 per request
+  maxTotalMicroUsdc: 1_000_000,    // never spend > $1.00 in this process
+  userAgent: "MyAgent/1.0",
 });
 
-// Drop-in fetch — 402s paid automatically
-const res = await client.fetch("https://publisher.com/articles/ai-trends");
+const res = await client.fetch("http://localhost:4010/articles/test");
 const data = await res.json();
 
-console.log("spent:", client.spend(), "MIST");
-console.log("address:", client.address());
+console.log("paid:", res.paywallPayment?.signature);
+console.log("spend:", client.spend());
 ```
 
-## How It Works
+That's the entire integration. Three lines after config.
 
-On a 402:
-1. Parses `challenge.objectId`, `challenge.priceMist`, `challenge.move.target`
-2. Checks budget caps (throws `BudgetExceededError` if exceeded)
-3. Builds PTB: `splitCoins(gas, [priceMist])` → `pay_and_unlock(challenge, coin, clock)`
-4. Retries with `X-SUI-PAYMENT-TX` + `X-SUI-CHALLENGE-ID` headers
-5. Returns the unlocked response
+## Configuration
 
-Vault (split) mode is detected automatically from the 402 body — no extra config.
+| Option                    | Required | Description                                                                         |
+| ------------------------- | :------: | ----------------------------------------------------------------------------------- |
+| `network`                 |    -     | `"devnet"` (default), `"mainnet-beta"`, or `"testnet"`.                             |
+| `signer`                  |    ✓     | Keypair, signer object, or one of the helpers below.                                |
+| `rpcUrl`                  |    -     | Override the Solana RPC endpoint.                                                   |
+| `usdcMint`                |    -     | Override USDC mint (rarely needed).                                                 |
+| `maxAmountMicroUsdc`      |    -     | **Recommended.** Hard cap on a single payment. Refuses larger 402s.                 |
+| `maxTotalMicroUsdc`       |    -     | **Recommended.** Lifetime budget for this client; throws when exceeded.             |
+| `allowedMints`            |    -     | Allowlist of acceptable asset mints.                                                |
+| `allowedRecipients`       |    -     | Allowlist of acceptable `payTo` ATAs.                                               |
+| `autoPay`                 |    -     | Default `true`. If `false`, 402s pass through unchanged.                            |
+| `userAgent`               |    -     | User-Agent header on all requests.                                                  |
+| `confirmCommitment`       |    -     | Solana commitment level (default `"confirmed"`).                                    |
+| `onChallenge(info)`       |    -     | Approval hook. Return `false` to refuse before paying.                              |
+| `onPayment(info)`         |    -     | Fired after each successful payment (logging, telemetry, persistence).              |
+| `fetchImpl`               |    -     | Custom `fetch` (e.g. for Node 16 or sandboxes).                                     |
 
-## Error Handling
+## Signers
+
+Pick whichever fits your runtime:
 
 ```js
-import { BudgetExceededError, PaymentRefusedError } from "ai-paywall-agent-sdk-sui";
+import {
+  fromKeypair,             // pass a @solana/web3.js Keypair
+  fromKeypairFile,         // read ~/.config/solana/id.json (or any path)
+  fromSecretKeyArray,      // Uint8Array / number[] (Solana CLI JSON format)
+  fromSecretKeyBase58,     // base58 64-byte secret
+} from "tollgate-agent-sdk";
+```
+
+For HSM, KMS, browser wallets, or remote signing services, build your own:
+
+```js
+const signer = {
+  publicKey,                          // PublicKey
+  async signTransaction(tx) {         // sign in place and return
+    await myKms.sign(tx);
+    return tx;
+  },
+};
+```
+
+## Safety guards
+
+The SDK refuses to sign anything that violates operator policy. Each
+violation throws a typed error from `tollgate-agent-sdk/errors`:
+
+| Error                          | Code                       | When                                                |
+| ------------------------------ | -------------------------- | --------------------------------------------------- |
+| `PaymentRefusedError`          | `PAYMENT_REFUSED`          | Network/mint/recipient/amount violates policy.      |
+| `PaymentBudgetExceededError`   | `BUDGET_EXCEEDED`          | Lifetime cap would be exceeded.                     |
+| `UnsupportedChallengeError`    | `UNSUPPORTED_CHALLENGE`    | 402 is malformed or uses an unsupported scheme.     |
+| `OnChainError`                 | `ON_CHAIN_ERROR`           | RPC, balance, or confirmation failure.              |
+| `VerificationRejectedError`    | `VERIFICATION_REJECTED`    | Server still rejected the request after payment.   |
+
+```js
+import { PaymentRefusedError } from "tollgate-agent-sdk";
 
 try {
-  const res = await client.fetch(url);
+  await client.fetch(url);
 } catch (err) {
-  if (err instanceof BudgetExceededError) { /* cap hit */ }
-  if (err instanceof PaymentRefusedError) { /* TX failed on-chain */ }
+  if (err instanceof PaymentRefusedError) {
+    // operator policy refused — do not retry
+  }
+  throw err;
 }
 ```
 
-## Full Documentation
+## Using with LLM agent frameworks
 
-See [docs/AGENT.md](../../docs/AGENT.md) or the Tollgate website.
+### LangChain
+
+```js
+import { paywallFetchTool } from "tollgate-agent-sdk/langchain";
+
+const tool = paywallFetchTool(client, {
+  allowHost: (host) => host.endsWith("example.com"),
+});
+
+const agent = createOpenAIToolsAgent({ llm, tools: [tool], prompt });
+```
+
+### OpenAI tool-calling
+
+The shape returned by `paywallFetchTool` (`{ name, description, schema, invoke }`)
+is intentionally framework-neutral. Map `schema` → `parameters` and call
+`tool.invoke(args)` from your tool router.
+
+### Anything else
+
+Skip the helper. `client.fetch` is `fetch`-compatible — pass it as the HTTP
+function to whatever HTTP/agent layer you already use.
+
+## Concurrency & idempotency
+
+Concurrent requests for the same URL+nonce coalesce automatically. If your
+agent fans out 10 parallel `client.fetch(url)` calls and all 10 get the same
+`402`, only **one** payment is sent and all 10 callers receive the unlocked
+response.
+
+## How it maps to the e2e flow
+
+| Step in `e2e-sdk-flow.js`            | Equivalent in agent-sdk             |
+| ------------------------------------ | ----------------------------------- |
+| `ensurePayerUsdc()`                  | `assertPayerCanCover` (automatic)   |
+| `buildAndSendPaymentHeader()`        | `buildAndSubmitPayment` (automatic) |
+| Manually retry with `X-PAYMENT`      | Automatic on every `client.fetch`   |
+| Manually echo `x-paywall-challenge`  | Automatic                           |
+| Validate amount/mint/network         | Configurable safety guards          |
 
 ## License
 

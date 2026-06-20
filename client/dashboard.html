@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Owner Dashboard · AI Paywall</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --card: #121a33;
+      --border: #273156;
+      --text: #eaf0ff;
+      --muted: #a6b2d9;
+      --accent: #6ee7b7;
+      --accent-2: #60a5fa;
+      --danger: #fb7185;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(180deg, #090f1f 0%, #0b1020 100%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      letter-spacing: 0.3px;
+    }
+    .muted { color: var(--muted); }
+    .btn {
+      border: 1px solid var(--border);
+      background: #192345;
+      color: var(--text);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn:hover { border-color: var(--accent-2); }
+    .btn.primary {
+      background: linear-gradient(135deg, #4f46e5, #6366f1);
+      border-color: #4f46e5;
+    }
+    .btn.primary:hover { filter: brightness(1.1); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 20px 0;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+    }
+    .label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+    .value {
+      font-size: 1.6rem;
+      margin-top: 8px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .value.secondary { color: var(--accent-2); }
+    .row {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 0.9rem;
+    }
+    th, td {
+      border-bottom: 1px solid #1d2747;
+      padding: 10px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+    }
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      word-break: break-all;
+      font-size: 0.78rem;
+      color: #9fd4ff;
+    }
+    .pill {
+      display: inline-block;
+      border: 1px solid #33507d;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 0.75rem;
+      color: #cce3ff;
+    }
+    .empty {
+      text-align: center;
+      padding: 26px 8px 20px;
+      color: var(--muted);
+    }
+    .error {
+      margin-top: 10px;
+      color: var(--danger);
+      font-size: 0.9rem;
+      min-height: 1.2rem;
+    }
+    .auth-card {
+      max-width: 560px;
+      margin: 80px auto;
+      text-align: center;
+    }
+    .auth-card .label {
+      letter-spacing: 1.2px;
+    }
+    .auth-card h2 {
+      margin: 6px 0 4px;
+      font-size: 1.6rem;
+    }
+    .auth-card p {
+      color: var(--muted);
+      margin: 8px 0 22px;
+    }
+    .auth-card .btn {
+      padding: 12px 22px;
+      font-size: 0.95rem;
+    }
+    .wallet-pill {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.8rem;
+      background: #0f1936;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 6px 12px;
+      color: var(--accent-2);
+    }
+    .hidden { display: none !important; }
+    @media (max-width: 1000px) {
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .row { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 560px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+
+    <!-- ─── Authentication card (shown when no session) ─── -->
+    <section id="auth-view" class="card auth-card">
+      <div class="label">AI Paywall · Owner Dashboard</div>
+      <h2>Sign in with your Solana wallet</h2>
+      <p>
+        Connect a wallet (Phantom, Backpack, etc.) and sign a one-time message
+        to view analytics for that wallet. We never see your private key.
+      </p>
+      <button class="btn primary" id="connect-btn" type="button">
+        Connect Wallet
+      </button>
+      <div class="error" id="auth-error"></div>
+    </section>
+
+    <!-- ─── Dashboard view (shown when authenticated) ─── -->
+    <section id="dashboard-view" class="hidden">
+      <div class="topbar">
+        <div>
+          <h1>AI Paywall Owner Dashboard</h1>
+          <div class="muted">Track revenue, bots, and paid content for your wallet</div>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+          <span class="wallet-pill" id="wallet-pill"></span>
+          <button class="btn" id="refresh-btn" type="button">Refresh</button>
+          <button class="btn" id="signout-btn" type="button">Sign out</button>
+        </div>
+      </div>
+
+      <section class="grid">
+        <article class="card">
+          <div class="label">Total Earnings (micro-USDC)</div>
+          <div class="value" id="total-earnings">-</div>
+        </article>
+        <article class="card">
+          <div class="label">Total Earnings (USDC)</div>
+          <div class="value secondary" id="total-earnings-usdc">-</div>
+        </article>
+        <article class="card">
+          <div class="label">Payments Count</div>
+          <div class="value" id="payments-count">-</div>
+        </article>
+        <article class="card">
+          <div class="label">Unique Bots</div>
+          <div class="value secondary" id="unique-bots">-</div>
+        </article>
+      </section>
+
+      <section class="row">
+        <article class="card">
+          <div class="label">Recent Payments</div>
+          <div id="payments-table-wrap"></div>
+        </article>
+        <article class="card">
+          <div class="label">Top Bots</div>
+          <div id="top-bots-wrap"></div>
+          <div class="label" style="margin-top:18px;">Top Paid Pages</div>
+          <div id="top-pages-wrap"></div>
+        </article>
+      </section>
+      <div class="error" id="error-text"></div>
+    </section>
+
+  </main>
+
+  <script type="module">
+    // ─── Helpers ──────────────────────────────────────────────────────────
+    const MICRO_USDC_PER_USDC = 1_000_000;
+    const SESSION_KEY = "aipw.session";
+    const WALLET_KEY  = "aipw.wallet";
+
+    function $(id) { return document.getElementById(id); }
+    function show(el) { el.classList.remove("hidden"); }
+    function hide(el) { el.classList.add("hidden"); }
+
+    function botFromEntry(payment) {
+      return payment.botName || payment.userAgent || "Unknown";
+    }
+    function formatMicroUsdc(value) {
+      return Number(value || 0).toLocaleString();
+    }
+    function formatUsdc(micro) {
+      return (Number(micro || 0) / MICRO_USDC_PER_USDC).toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 6,
+      });
+    }
+    function shortAddr(a) {
+      if (!a) return "";
+      return a.length > 12 ? `${a.slice(0, 4)}…${a.slice(-4)}` : a;
+    }
+    function mapTopCounts(items) {
+      const map = new Map();
+      for (const item of items) {
+        map.set(item, (map.get(item) || 0) + 1);
+      }
+      return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+    }
+    function renderTopList(containerId, entries, label) {
+      const wrap = $(containerId);
+      if (!entries.length) {
+        wrap.innerHTML = '<div class="empty">No data yet</div>';
+        return;
+      }
+      const rows = entries
+        .map(([key, count]) => `<tr><td>${key}</td><td>${count.toLocaleString()} ${label}</td></tr>`)
+        .join("");
+      wrap.innerHTML = `<table><tbody>${rows}</tbody></table>`;
+    }
+    function renderPayments(payments) {
+      const wrap = $("payments-table-wrap");
+      if (!payments.length) {
+        wrap.innerHTML = '<div class="empty">No payments recorded yet</div>';
+        return;
+      }
+      const rows = payments.slice(0, 12).map((p) => `
+        <tr>
+          <td><span class="pill">${botFromEntry(p)}</span></td>
+          <td>${p.path || "-"}</td>
+          <td>${formatMicroUsdc(p.lamports)}</td>
+          <td>${new Date(p.timestamp).toLocaleString()}</td>
+        </tr>
+      `).join("");
+      wrap.innerHTML = `
+        <table>
+          <thead>
+            <tr><th>Bot</th><th>Path</th><th>Paid (micro-USDC)</th><th>Time</th></tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+    }
+
+    // ─── Auth ─────────────────────────────────────────────────────────────
+    async function connectWallet() {
+      const errorEl = $("auth-error");
+      errorEl.textContent = "";
+      const provider = window.solana || window.phantom?.solana;
+      if (!provider) {
+        errorEl.innerHTML = 'No Solana wallet detected. Install '
+          + '<a href="https://phantom.app" target="_blank" style="color:#9fd4ff;">Phantom</a>'
+          + ' (or any compatible wallet) and reload.';
+        return;
+      }
+
+      try {
+        const connectBtn = $("connect-btn");
+        connectBtn.disabled = true;
+        connectBtn.textContent = "Connecting...";
+
+        const resp = await provider.connect();
+        const walletAddress = resp.publicKey.toString();
+
+        // 1) Get nonce/message from server
+        const nonceRes = await fetch("/v1/auth/nonce", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ walletAddress }),
+        });
+        const nonceData = await nonceRes.json();
+        if (!nonceRes.ok) throw new Error(nonceData.error || "Failed to get nonce");
+
+        // 2) Ask wallet to sign the message
+        connectBtn.textContent = "Sign message in wallet...";
+        const messageBytes = new TextEncoder().encode(nonceData.message);
+        const signed = await provider.signMessage(messageBytes, "utf8");
+        const signature = bs58Encode(signed.signature);
+
+        // 3) Exchange signature for session
+        const verifyRes = await fetch("/v1/auth/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            walletAddress,
+            message: nonceData.message,
+            signature,
+            token: nonceData.token,
+          }),
+        });
+        const verifyData = await verifyRes.json();
+        if (!verifyRes.ok) throw new Error(verifyData.error || "Login failed");
+
+        localStorage.setItem(SESSION_KEY, verifyData.session);
+        localStorage.setItem(WALLET_KEY, verifyData.walletAddress);
+        await enterDashboard();
+      } catch (err) {
+        errorEl.textContent = err.message || "Wallet sign-in failed";
+      } finally {
+        const connectBtn = $("connect-btn");
+        connectBtn.disabled = false;
+        connectBtn.textContent = "Connect Wallet";
+      }
+    }
+
+    function signOut() {
+      localStorage.removeItem(SESSION_KEY);
+      localStorage.removeItem(WALLET_KEY);
+      hide($("dashboard-view"));
+      show($("auth-view"));
+    }
+
+    async function enterDashboard() {
+      hide($("auth-view"));
+      show($("dashboard-view"));
+      const wallet = localStorage.getItem(WALLET_KEY);
+      $("wallet-pill").textContent = shortAddr(wallet);
+      await loadDashboard();
+    }
+
+    async function loadDashboard() {
+      const errorEl = $("error-text");
+      errorEl.textContent = "";
+      const session = localStorage.getItem(SESSION_KEY);
+      if (!session) return signOut();
+      try {
+        const res = await fetch("/v1/dashboard", {
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${session}` },
+        });
+        const data = await res.json();
+        if (res.status === 401) {
+          signOut();
+          return;
+        }
+        if (!res.ok) throw new Error(data.error || "Failed to load dashboard");
+
+        const payments = data.payments || [];
+        const totalMicroUsdc = Number(data.total_lamports || 0);
+        const uniqueBots = new Set(payments.map(botFromEntry).filter(Boolean)).size;
+
+        $("total-earnings").textContent = formatMicroUsdc(totalMicroUsdc);
+        $("total-earnings-usdc").textContent = formatUsdc(totalMicroUsdc);
+        $("payments-count").textContent = Number(data.total || payments.length).toLocaleString();
+        $("unique-bots").textContent = uniqueBots.toLocaleString();
+
+        renderPayments(payments);
+        renderTopList("top-bots-wrap", mapTopCounts(payments.map(botFromEntry)), "payments");
+        renderTopList("top-pages-wrap", mapTopCounts(payments.map((p) => p.path || "-")), "payments");
+      } catch (err) {
+        errorEl.textContent = err.message || "Could not fetch dashboard.";
+      }
+    }
+
+    // Minimal base58 encoder (Bitcoin alphabet) — used to encode the
+    // signature returned by Phantom (Uint8Array) for the API.
+    function bs58Encode(bytes) {
+      const ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+      const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+      let zeros = 0;
+      while (zeros < u8.length && u8[zeros] === 0) zeros++;
+      const digits = [0];
+      for (let i = zeros; i < u8.length; i++) {
+        let carry = u8[i];
+        for (let j = 0; j < digits.length; j++) {
+          carry += digits[j] << 8;
+          digits[j] = carry % 58;
+          carry = (carry / 58) | 0;
+        }
+        while (carry > 0) {
+          digits.push(carry % 58);
+          carry = (carry / 58) | 0;
+        }
+      }
+      let out = "";
+      for (let i = 0; i < zeros; i++) out += "1";
+      for (let i = digits.length - 1; i >= 0; i--) out += ALPHABET[digits[i]];
+      return out;
+    }
+
+    // ─── Boot ─────────────────────────────────────────────────────────────
+    $("connect-btn").addEventListener("click", connectWallet);
+    $("signout-btn").addEventListener("click", signOut);
+    $("refresh-btn").addEventListener("click", loadDashboard);
+
+    if (localStorage.getItem(SESSION_KEY) && localStorage.getItem(WALLET_KEY)) {
+      enterDashboard();
+      setInterval(loadDashboard, 15000);
+    }
+  </script>
+</body>
+</html>

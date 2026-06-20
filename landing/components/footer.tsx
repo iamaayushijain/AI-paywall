@@ -43,8 +43,8 @@ export function Footer() {
               <span className="font-semibold text-ink">Tollgate</span>
             </Link>
             <p className="mt-3 text-sm text-inkSubtle max-w-xs leading-relaxed">
-              The HTTP 402 consent layer that AI agents can&apos;t ignore. SUI
-              micropayments via Move contracts, settled on-chain.
+              The HTTP 402 consent layer that AI agents can&apos;t ignore. USDC
+              micropayments on Solana, direct to your wallet.
             </p>
             <div className="mt-4 flex gap-3">
               <a
@@ -96,7 +96,7 @@ export function Footer() {
           </p>
           <div className="flex items-center gap-1.5 text-xs text-inkSubtle">
             <span className="w-1.5 h-1.5 rounded-full bg-success" />
-            SUI testnet + mainnet
+            Solana devnet + mainnet-beta
           </div>
         </div>
       </div>

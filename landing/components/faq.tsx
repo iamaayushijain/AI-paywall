@@ -7,27 +7,27 @@ import { ChevronDown } from "lucide-react";
 const FAQS = [
   {
     q: "Can't AI agents just ignore this like they ignore robots.txt?",
-    a: "That's exactly the point — and the answer is no. robots.txt is a text file with no enforcement. Tollgate enforces at the HTTP protocol layer: the server returns HTTP 402 and serves zero bytes of content until a valid, on-chain SUI payment is verified. There's nothing to \"ignore\" — the content physically doesn't arrive without payment. An agent that skips the payment gets a 402 response body, not your article.",
+    a: "That's exactly the point — and the answer is no. robots.txt is a text file with no enforcement. Tollgate enforces at the HTTP protocol layer: the server returns HTTP 402 and serves zero bytes of content until a valid, on-chain USDC payment is verified. There's nothing to \"ignore\" — the content physically doesn't arrive without payment. An agent that skips the payment gets a 402 response body, not your article.",
   },
   {
     q: "Does this affect human visitors?",
-    a: "No. Bot detection runs locally in-process using user-agent patterns and header fingerprinting. Human browsers pass immediately with zero overhead — no network call, no redirect, no latency added.",
+    a: "No. Bot detection runs locally in-process using user-agent patterns, header fingerprinting, and IP ranges. Human browsers pass immediately with zero overhead — no network call, no redirect, no latency added. Only requests that score above the bot threshold (≥70) are challenged.",
   },
   {
     q: "Where does the money go? Does Tollgate take a cut?",
-    a: "Payments flow directly from the agent's SUI account on-chain via the Move contract. Tollgate's server never holds funds, has no custody of keys, and takes no percentage of payments. The only fees are SUI network gas fees (fraction of a cent per transaction). With the PublisherVault, you configure your own split ratios — Tollgate takes nothing by default.",
+    a: "Payments flow directly from the agent's Solana wallet to your wallet ATA on-chain. Tollgate's server never holds funds, has no custody of keys, and takes no percentage of payments. The only fees are Solana network fees (~$0.00025 per transaction). The plan fee covers hosted infrastructure and support, not a slice of your revenue.",
   },
   {
-    q: "How does replay protection work without a database?",
-    a: "The PaywallChallenge is a SUI shared object. When pay_and_unlock is called, the object is consumed (deleted) atomically in the same transaction. A second attempt with the same object ID fails because the object no longer exists on-chain — this is enforced at the Move VM level, not application code.",
+    q: "What if the facilitator is down?",
+    a: "You control this. The failOpen option (default false) determines behavior: if false, bots are blocked when the facilitator is unreachable (conservative). If true, they're let through (permissive). For self-hosted setups using the server SDK directly, there's no external facilitator dependency at all.",
   },
   {
-    q: "What is the PublisherVault?",
-    a: "A PublisherVault is a SUI shared object that stores your payment split config in basis points (publisher / pool / protocol). When agents call pay_and_unlock_split, the payment is atomically split and transferred to all three addresses in one PTB — no secondary transactions, no dust loss.",
+    q: "Can I use this with frameworks other than Express?",
+    a: "Yes. The publisher SDK ships adapters for Express, Next.js App Router (both middleware and route handler), Fastify (plugin), and Cloudflare Workers. The core is framework-agnostic — if you need a custom adapter, implement the normalized request interface and call runPaywall() directly.",
   },
   {
     q: "What do agents need to integrate on their side?",
-    a: "Install ai-paywall-agent-sdk-sui, fund a SUI address, and replace fetch() with client.fetch(). The SDK handles the entire flow — parsing the 402 body, building and submitting the pay_and_unlock PTB, and retrying with X-SUI-PAYMENT-TX and X-SUI-CHALLENGE-ID headers. Vault (split) mode is detected automatically from the 402 body.",
+    a: "Install tollgate-agent-sdk, provide a Solana keypair (or custom signer), and replace fetch() with client.fetch(). The SDK handles the entire payment flow — parsing the 402, building and submitting the USDC transfer, retrying the request with the X-PAYMENT header. For LangChain, use paywallFetchTool(client) to expose it as a tool. That's the full integration.",
   },
 ];
 

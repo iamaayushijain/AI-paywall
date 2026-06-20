@@ -15,17 +15,17 @@ const FEATURES = [
   {
     icon: ScanSearch,
     title: "Multi-signal bot detection",
-    body: "User-agent patterns and header fingerprinting — scored in-process for low false-positive bot classification with zero network overhead.",
+    body: "User-agent patterns, header fingerprinting, datacenter CIDRs, and reverse DNS verification — scored and combined for low false-positive classification.",
   },
   {
     icon: Shield,
-    title: "Intrinsic on-chain replay protection",
-    body: "The PaywallChallenge shared object is consumed atomically when pay_and_unlock is called. A second attempt with the same ID fails because the object no longer exists — no database required.",
+    title: "Replay protection",
+    body: "Every transaction signature is cached after redemption. A payment can only unlock content once. Survives server restarts.",
   },
   {
     icon: Wallet,
-    title: "SUI-native, no custodian",
-    body: "Payments flow directly from the agent's SUI account to the publisher's address via Move. Tollgate never holds funds or keys.",
+    title: "Wallet-native, no custodian",
+    body: "You provide a Solana address. Payments flow directly from agent to your wallet ATA. Tollgate never holds funds or keys.",
   },
   {
     icon: Zap,
@@ -34,13 +34,13 @@ const FEATURES = [
   },
   {
     icon: Layers,
-    title: "Revenue-splitting PublisherVault",
-    body: "Create a PublisherVault with basis-point splits across publisher, content pool, and protocol. One PTB atomically routes each payment — no secondary transactions.",
+    title: "Framework-agnostic adapters",
+    body: "Native adapters for Express, Next.js App Router middleware, Fastify plugin, and Cloudflare Workers — no glue code required.",
   },
   {
     icon: BarChart3,
-    title: "On-chain cumulative analytics",
-    body: "The PublisherVault stores total_received_mist and payment_count on-chain. Anyone can read live stats via SUI RPC — no indexer, no API key.",
+    title: "Sign-In With Solana analytics",
+    body: "Connect your wallet to the hosted dashboard and see payments received, top bots, and top paid pages — scoped to your wallet without API keys.",
   },
 ];
 

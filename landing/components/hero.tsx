@@ -9,18 +9,17 @@ const TERMINAL_LINES = [
   { delay: 0,    text: "$ curl -A 'GPTBot/1.0' https://yoursite.com/articles/ai-trends", type: "cmd" },
   { delay: 800,  text: "HTTP/1.1 402 Payment Required", type: "status" },
   { delay: 1000, text: "{", type: "json" },
-  { delay: 1100, text: '  "network": "sui-testnet",', type: "json" },
-  { delay: 1200, text: '  "challenge": {', type: "json" },
-  { delay: 1300, text: '    "objectId": "0x4a7f...e2c1",', type: "json" },
-  { delay: 1400, text: '    "priceMist": 1000000,', type: "json" },
-  { delay: 1500, text: '    "move": { "target": "0xff98::paywall::pay_and_unlock" }', type: "json" },
-  { delay: 1600, text: '  }', type: "json" },
-  { delay: 1700, text: "}", type: "json" },
+  { delay: 1100, text: '  "scheme": "exact",', type: "json" },
+  { delay: 1200, text: '  "payTo": "7xKpT...ATA",', type: "json" },
+  { delay: 1300, text: '  "asset": "USDC on Solana",', type: "json" },
+  { delay: 1400, text: '  "amountMicroUsdc": 1000,', type: "json" },
+  { delay: 1500, text: '  "challenge": "tok_9fK2mN..."', type: "json" },
+  { delay: 1600, text: "}", type: "json" },
   { delay: 2200, text: "", type: "gap" },
-  { delay: 2300, text: "# Agent submits pay_and_unlock PTB on SUI...", type: "comment" },
-  { delay: 3100, text: "$ curl ... -H 'X-SUI-PAYMENT-TX: Fz9k...' -H 'X-SUI-CHALLENGE-ID: 0x4a7f...'", type: "cmd" },
+  { delay: 2300, text: "# Agent pays 0.001 USDC on-chain...", type: "comment" },
+  { delay: 3100, text: "$ curl ... -H 'X-PAYMENT: <signed_tx>'", type: "cmd" },
   { delay: 3400, text: "HTTP/1.1 200 OK", type: "ok" },
-  { delay: 3600, text: '{ "content": "...", "payment": { "payer": "0x24ae...", "amountMist": 1000000 } }', type: "ok" },
+  { delay: 3600, text: '{ "content": "...", "paywallPayment": { "signature": "3jK9...", "received": 1000 } }', type: "ok" },
 ];
 
 function TerminalLine({ text, type, visible }: { text: string; type: string; visible: boolean }) {
@@ -118,8 +117,8 @@ export function Hero() {
             >
               Tollgate makes AI agent access{" "}
               <strong className="text-ink font-medium">enforceable at the protocol layer</strong>.
-              Publishers gate content with a two-line SDK and receive SUI micropayments
-              directly on-chain. Agents pay automatically via a SUI Move contract, or don&apos;t get in.
+              Publishers gate content with a two-line SDK and receive USDC micropayments
+              directly in their wallet. Agents pay automatically, or don&apos;t get in.
             </motion.p>
 
             <motion.div
@@ -151,7 +150,7 @@ export function Hero() {
             >
               <span className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-success" />
-                SUI testnet &amp; mainnet
+                Solana mainnet &amp; devnet
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-success" />
@@ -179,7 +178,7 @@ export function Hero() {
                 <div className="w-3 h-3 rounded-full bg-[#28c840]" />
                 <div className="ml-3 flex items-center gap-1.5 text-xs text-inkSubtle">
                   <Terminal className="w-3 h-3" />
-                  tollgate — SUI agent access flow
+                  tollgate — agent access flow
                 </div>
               </div>
 
@@ -203,8 +202,8 @@ export function Hero() {
 
             {/* Floating badge */}
             <div className="absolute -bottom-4 -right-4 bg-surface border border-border rounded-lg px-3 py-2 shadow-lg">
-              <div className="text-xs text-inkSubtle">settled on SUI</div>
-              <div className="text-sm font-semibold text-success">+0.001 SUI</div>
+              <div className="text-xs text-inkSubtle">settled on-chain</div>
+              <div className="text-sm font-semibold text-success">+$0.001 USDC</div>
             </div>
           </motion.div>
         </div>

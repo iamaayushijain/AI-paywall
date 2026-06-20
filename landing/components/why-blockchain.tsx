@@ -8,22 +8,22 @@ const REASONS = [
   {
     icon: Link2,
     q: "Why not just use a payment processor?",
-    a: "Credit card processors take 2.9% + $0.30 — more than the payment itself at micropayment scale. SUI settles in ~0.5s with sub-cent gas fees. The economics only work on-chain.",
+    a: "Credit card processors take 2.9% + $0.30 — more than the payment itself at micropayment scale. USDC on Solana settles in ~0.4s with sub-cent fees. The economics only work on-chain.",
   },
   {
     icon: Globe,
-    q: "Why SUI specifically?",
-    a: "SUI's object model is a perfect fit: the PaywallChallenge is a shared Move object consumed on payment — that's atomic replay protection with no database. ~500ms finality and sub-cent gas fees make micropayments viable.",
+    q: "Why Solana specifically?",
+    a: "~400ms finality, $0.00025 average transaction fee, a mature USDC SPL token with a Circle-issued devnet faucet. Ethereum L1 fees alone would exceed the payment value.",
   },
   {
     icon: Coins,
-    q: "Why native SUI instead of a stablecoin?",
-    a: "SUI is the gas token — agents already hold it to transact. Using native SUI removes the complexity of managing a separate token for both publishers and agents in a hackathon-friendly demo.",
+    q: "Why USDC and not native SOL?",
+    a: "USDC is price-stable. Pricing content at $0.001 means $0.001 — not 0.0000065 SOL today, something different tomorrow. Publishers set prices in dollars, not volatile tokens.",
   },
   {
     icon: RefreshCw,
     q: "What stops someone from building a centralized version?",
-    a: "Nothing. But on-chain verification means Tollgate's server doesn't need to trust the agent — or be trusted by the agent. The SUI RPC is the neutral arbiter. The Move contract enforces the rules regardless of who runs the server.",
+    a: "Nothing. But on-chain verification means Tollgate's server doesn't need to trust the agent — or be trusted by the agent. The Solana RPC is the neutral arbiter. No payment processor account to ban you.",
   },
 ];
 
@@ -114,9 +114,9 @@ export function WhyBlockchain() {
                   <td className="px-4 py-3 text-center text-yellow-500">~</td>
                 </tr>
                 <tr className="bg-raised">
-                  <td className="px-4 py-3 text-ink font-medium">SUI native ← Tollgate</td>
+                  <td className="px-4 py-3 text-ink font-medium">Solana USDC ← Tollgate</td>
                   <td className="px-4 py-3 text-center text-success font-mono">&lt;$0.001</td>
-                  <td className="px-4 py-3 text-center text-success">~500ms</td>
+                  <td className="px-4 py-3 text-center text-success">~400ms</td>
                   <td className="px-4 py-3 text-center text-success">✓</td>
                 </tr>
               </tbody>

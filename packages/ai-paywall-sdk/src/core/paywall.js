@@ -1,41 +1,135 @@
-import { detectBot } from './detector.js';
-import { createChallengeClient } from './challenge.js';
-
 /**
- * @param {object} config
- * @param {string} config.packageId        Deployed tollgate Move package ID (0x...)
- * @param {string} config.serverKey        SUI private key (bech32 suiprivkey1... or base64)
- * @param {"testnet"|"mainnet"|string} [config.network="testnet"]
- * @param {string} [config.rpcUrl]         Override RPC endpoint
- * @param {string[]} [config.protect]      Path globs to protect, e.g. ["/articles/*"]
- * @param {number} [config.priceMist=1000000]  Price in MIST (1 SUI = 1e9 MIST)
- * @param {string} [config.vaultId]        Optional PublisherVault object ID for split payments
+ * Framework-agnostic paywall orchestrator.
+ *
+ * Adapters convert framework-specific request/response into the normalized
+ * interface here, call `runPaywall(...)`, and translate the verdict back.
+ *
+ * Verdict shapes:
+ *   { kind: "passthrough" }
+ *   { kind: "passthrough", payment: { signature, payer, received } }
+ *   { kind: "402", status: 402, body: <object>, headers: <object> }
+ *   { kind: "403", status: 403, body: <object>, headers: <object> }
+ *   { kind: "error", status: 500, body: <object>, headers: <object> }
  */
-export function createPaywall({
-  packageId,
-  serverKey,
-  network = 'testnet',
-  rpcUrl,
-  protect,
-  priceMist = 1_000_000,
-  vaultId,
-} = {}) {
-  if (!packageId) throw new Error('createPaywall requires packageId');
-  if (!serverKey) throw new Error('createPaywall requires serverKey');
 
-  const challengeClient = createChallengeClient({ packageId, serverKey, network, rpcUrl });
+import { detectBot } from "./botDetector.js";
 
-  const protectPatterns = (protect || []).map((p) =>
-    typeof p === 'string' ? new RegExp('^' + p.replace(/\*/g, '.*') + '$') : p,
+function getHeader(headers, name) {
+  if (!headers) return undefined;
+  if (typeof headers.get === "function") return headers.get(name);
+  return headers[name] ?? headers[name.toLowerCase()];
+}
+
+function pathMatches(pathname, matchers) {
+  if (!matchers || matchers.length === 0) return true;
+  for (const m of matchers) {
+    if (m instanceof RegExp) {
+      if (m.test(pathname)) return true;
+      continue;
+    }
+    if (typeof m === "string") {
+      if (m === pathname) return true;
+      if (m.endsWith("/*") && pathname.startsWith(m.slice(0, -2))) return true;
+      if (m.endsWith("*") && pathname.startsWith(m.slice(0, -1))) return true;
+    }
+  }
+  return false;
+}
+
+const HEADERS_JSON = { "Content-Type": "application/json" };
+
+export async function runPaywall({
+  client,
+  config,
+  request: { method = "GET", pathname, headers },
+}) {
+  const protect = config.protect || ["/*"];
+  if (!pathMatches(pathname, protect)) {
+    return { kind: "passthrough" };
+  }
+
+  const detection = detectBot(
+    { headers, method },
+    {
+      botScoreThreshold: config.botScoreThreshold ?? 70,
+      allowList: config.allowList,
+    },
   );
 
+  if (config.onDetection) {
+    try { config.onDetection(detection); } catch { /* user hook errors swallowed */ }
+  }
+
+  if (!detection.isBot) {
+    return { kind: "passthrough" };
+  }
+
+  const xPayment = getHeader(headers, "x-payment");
+  const challengeToken = getHeader(headers, "x-paywall-challenge");
+
+  if (!xPayment) {
+    try {
+      const envelope = await client.createChallenge({
+        resource: pathname,
+        basePriceMicroUsdc: config.basePriceMicroUsdc,
+        bot: detection.botName,
+      });
+      return {
+        kind: "402",
+        status: 402,
+        headers: HEADERS_JSON,
+        body: envelope,
+      };
+    } catch (err) {
+      return failOpen(config, err, "challenge_failed");
+    }
+  }
+
+  try {
+    const result = await client.verify({
+      paymentHeader: xPayment,
+      resource: pathname,
+      challengeToken,
+      requiredMicroUsdc: config.basePriceMicroUsdc,
+      meta: {
+        botName: detection.botName,
+        userAgent: getHeader(headers, "user-agent"),
+      },
+    });
+
+    if (result.verified) {
+      return {
+        kind: "passthrough",
+        payment: {
+          signature: result.signature,
+          payer: result.payer,
+          received: result.received,
+        },
+      };
+    }
+    return {
+      kind: "403",
+      status: 403,
+      headers: HEADERS_JSON,
+      body: { status: "forbidden", error: result.error || "Payment verification failed" },
+    };
+  } catch (err) {
+    return failOpen(config, err, "verify_failed");
+  }
+}
+
+function failOpen(config, err, stage) {
+  const failOpen = config.failOpen ?? false;
+  if (failOpen) {
+    return {
+      kind: "passthrough",
+      degraded: { stage, message: err.message },
+    };
+  }
   return {
-    packageId,
-    network,
-    priceMist,
-    vaultId: vaultId || null,
-    isBot: (req) => detectBot(req),
-    isProtected: (path) => protectPatterns.length === 0 || protectPatterns.some((p) => p.test(path)),
-    challengeClient,
+    kind: "error",
+    status: 503,
+    headers: HEADERS_JSON,
+    body: { status: "error", stage, error: err.message || "Paywall unavailable" },
   };
 }
